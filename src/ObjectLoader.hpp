@@ -66,7 +66,7 @@ inline bool load_obj(
         // Parse faces
         else if (strcmp(lineHeader, "f") == 0) {
             unsigned int vertexIndex[3];
-            int matches = fscanf(file, "%d %d %d\n",
+            int matches = fscanf(file, "%u %u %u\n",
                 &vertexIndex[0],
                 &vertexIndex[1],
                 &vertexIndex[2]);
@@ -97,7 +97,6 @@ inline bool load_obj(
     glm::vec3 size = max_extents - min_extents;
     float max_size = std::max(std::max(size.x, size.y), size.z);
     float scale = 2.0f / max_size; // Scale to fit in [-1, 1]
-
 
     // Process the data to create Triangle structures
     for (unsigned int i = 0; i < vertexIndices.size(); i += 3) {

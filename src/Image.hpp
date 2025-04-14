@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <memory>
 #include <stdexcept>
+#include <string>
 
 #include "Resources.hpp"
 
@@ -40,6 +41,14 @@ public:
     }
 
     /// Loads an image from the resource directory.
+    ///
+    /// @param resource_name Name of the image file.
+    Image(const std::string& resource_name)
+        : Image(to_resource_path(resource_name))
+    {
+    }
+
+    /// Loads an image from a path.
     ///
     /// @param file_name Absolute path to the image file.
     Image(std::filesystem::path file_name)
