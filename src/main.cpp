@@ -59,6 +59,8 @@ int main()
     glfwSetWindowUserPointer(window, &app);
     app.init(window);
 
+    double current_time = glfwGetTime();
+    double last_frame_time = current_time;
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -67,7 +69,12 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        app.draw(window);
+        // Compute the time elapsed between the current and the last frame.
+        current_time = glfwGetTime();
+        double delta_time = current_time - last_frame_time;
+        last_frame_time = current_time;
+
+        app.draw(window, static_cast<float>(delta_time));
 
         // ImGui render
         ImGui::Render();

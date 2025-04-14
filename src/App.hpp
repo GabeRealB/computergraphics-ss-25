@@ -28,9 +28,10 @@ public:
         (void)window;
     }
 
-    void draw(GLFWwindow* window)
+    void draw(GLFWwindow* window, float delta_time)
     {
         (void)window;
+        (void)delta_time;
 
         glClearColor(1.0f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
