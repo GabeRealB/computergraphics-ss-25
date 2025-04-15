@@ -85,6 +85,9 @@ cmake-build-*/
 build/
 build-*/
 
+## Dear ImGui artifacts
+imgui.ini
+
 # Mongo Explorer plugin
 .idea/**/mongoSettings.xml
 
