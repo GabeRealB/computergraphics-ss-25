@@ -1,5 +1,6 @@
 #pragma once
 // GLAD
+#include "glm/fwd.hpp"
 #include <glad/gl.h>
 // GLFW (include after glad)
 #include <GLFW/glfw3.h>
@@ -19,130 +20,110 @@
 #include "ObjectLoader.hpp"
 #include "Resources.hpp"
 #include "Shader.hpp"
+#include "Transform.hpp"
 
 class App {
 public:
     App()
-        : m_triangle_vao { 0 }
-        , m_house_vao { 0 }
-        , m_program_id { 0 }
     {
     }
 
-    void initialize_triangle_vao()
+    void initialize_stem()
     {
-        // Generates a single Vertex Array Object (VAO) and stores its ID in 'm_triangle_vao'
-        glGenVertexArrays(1, &this->m_triangle_vao);
-        // Binds the VAO to define how vertex attributes are stored
-        glBindVertexArray(this->m_triangle_vao);
+        glGenVertexArrays(1, &this->m_stem_vao);
+        glBindVertexArray(this->m_stem_vao);
 
         constexpr static float VERTEX_POSITIONS[] = {
-            -1.0f, -1.0f, 0.0f, // First vertex of a triangle (bottom-left)
-            1.0f, -1.0f, 0.0f, // Second vertex of a triangle (bottom-right)
-            0.0f, 1.0f, 0.0f, // Third vertex of a triangle (top-center)
+            -0.1f, -1.0f, 0.0f, // bottom-left
+            0.1f, -1.0f, 0.0f, // bottom-right
+            0.1f, 0.4f, 0.0f, // top-right
+            -0.1f, 0.4f, 0.0f, // top-left
         };
 
         GLuint vertex_buffer;
-        // Generates a single OpenGL buffer and stores its ID in 'vertex_buffer'
         glGenBuffers(1, &vertex_buffer);
-        // Binds the newly created buffer to the GL_ARRAY_BUFFER target
         glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-        // Creates and initializes the buffer object's data store with vertex data
         glBufferData(GL_ARRAY_BUFFER, sizeof(VERTEX_POSITIONS), VERTEX_POSITIONS, GL_STATIC_DRAW);
 
-        // Enables a generic vertex attribute array
         glEnableVertexAttribArray(0);
-        // Binds the vertex buffer to the GL_ARRAY_BUFFER target again (for drawing)
         glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-        glVertexAttribPointer(
-            0, // Specifies the index of the generic vertex attribute
-            3, // Specifies the number of components per generic vertex attribute
-            GL_FLOAT, // Specifies the data type of each component
-            GL_FALSE, // Specifies whether fixed-point data values should be normalized
-            0, // Specifies the byte offset between consecutive generic vertex attributes
-            (void*)0 // Specifies a pointer to the start of the first component of the first generic vertex attribute in the array
-        );
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-        // Unbind the Vertex Array Object
         glBindVertexArray(0);
     }
 
-    void initialize_house_vao()
+    void initialize_rotor()
     {
-        // Generates a single Vertex Array Object (VAO) and stores its ID in 'm_house_vao'
-        glGenVertexArrays(1, &this->m_house_vao);
-        // Binds the VAO to define how vertex attributes are stored
-        glBindVertexArray(this->m_house_vao);
+        glGenVertexArrays(1, &this->m_rotor_vao);
+        glBindVertexArray(this->m_rotor_vao);
 
-        // Coordinates for "Haus vom Niklaus" (a simple house shape)
         constexpr static float VERTEX_POSITIONS[] = {
-            -0.5f, -0.5f, 0.0f, // A (bottom-left)
-            0.5f, -0.5f, 0.0f, // B (bottom-right)
-            -0.5f, 0.5f, 0.0f, // C (top-left)
-            0.5f, 0.5f, 0.0f, // D (top-right)
-            0.0f, 1.0f, 0.0f, // E (roof peak)
-            -0.5f, 0.5f, 0.0f, // C (repeated for drawing continuity)
-            -0.5f, -0.5f, 0.0f, // A (repeated for drawing continuity)
-            0.5f, 0.5f, 0.0f, // D (repeated for drawing continuity)
-            0.5f, -0.5f, 0.0f, // B (repeated for drawing continuity)
+            -0.2f, -0.6f, 0.0f, // bottom-left
+            0.2f, -0.6f, 0.0f, // bottom-right
+            0.0f, 0.0f, 0.0f, // middle
+            0.0f, 0.0f, 0.0f, // middle
+            -0.2f, 0.6f, 0.0f, // top-right
+            0.2f, 0.6f, 0.0f, // top-left
         };
 
         GLuint vertex_buffer;
-        // Generates a single OpenGL buffer and stores its ID in 'vertex_buffer'
         glGenBuffers(1, &vertex_buffer);
-        // Binds the newly created buffer to the GL_ARRAY_BUFFER target
         glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-        // Creates and initializes the buffer object's data store with vertex data
         glBufferData(GL_ARRAY_BUFFER, sizeof(VERTEX_POSITIONS), VERTEX_POSITIONS, GL_STATIC_DRAW);
 
-        // Enables a generic vertex attribute array
         glEnableVertexAttribArray(0);
-        // Binds the vertex buffer to the GL_ARRAY_BUFFER target again (for drawing)
         glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-        glVertexAttribPointer(
-            0, // Specifies the index of the generic vertex attribute
-            3, // Specifies the number of components per generic vertex attribute
-            GL_FLOAT, // Specifies the data type of each component
-            GL_FALSE, // Specifies whether fixed-point data values should be normalized
-            0, // Specifies the byte offset between consecutive generic vertex attributes
-            (void*)0 // Specifies a pointer to the start of the first component of the first generic vertex attribute in the array
-        );
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-        // Unbind the Vertex Array Object
         glBindVertexArray(0);
+
+        this->m_rotor_0_transform.with_rotation_euler({ 0.0f, 0.0f, 0.0f });
+        this->m_rotor_1_transform.with_rotation_euler({ 0.0f, 0.0f, glm::half_pi<float>() });
+        this->m_rotor_transform.with_translation({ 0.0f, 0.2f, 0.0f });
     }
 
     void init(GLFWwindow*)
     {
-        this->initialize_triangle_vao();
-        this->initialize_house_vao();
+        this->initialize_stem();
+        this->initialize_rotor();
 
-        // Set the triangle as the active shape.
-        this->m_active_vao = this->m_triangle_vao;
-        this->m_drawing_mode = GL_TRIANGLES;
-        this->m_vertices_count = 3;
-
-        // Loads and compiles shaders from files and links them into a program
         this->m_program_id = Shader::loadShaders(to_resource_path("vertex0.glsl"), to_resource_path("fragment0.glsl"));
-        // Installs the program object as part of the current rendering state
-        glUseProgram(this->m_program_id);
+        this->m_model_color_location = glGetUniformLocation(this->m_program_id, "model_color");
+        this->m_model_matrix_location = glGetUniformLocation(this->m_program_id, "model_matrix");
     }
 
-    void draw(GLFWwindow*, float)
+    void draw(GLFWwindow*, float delta_time)
     {
-        // Clears the color buffer to preset values
+        constexpr static float ROTATIONS_PER_SEC = 0.25f;
+        const glm::quat rotation_quat { glm::vec3 { 0.0f, 0.0f, glm::tau<float>() * ROTATIONS_PER_SEC * delta_time } };
+        const auto rotation = rotation_quat * this->m_rotor_transform.rotation();
+        this->m_rotor_transform.with_rotation(rotation);
+
         glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0.0f, 0.0f, 0.6f, 1.0f);
 
-        // Sets the clear color for the color buffer
-        glClearColor(1.0f, 1.0f, 0.2f, 1.0f);
+        glUseProgram(this->m_program_id);
 
-        // Bind the the vertex array object of the shape.
-        glBindVertexArray(this->m_active_vao);
+        // Draw the stem
+        glBindVertexArray(this->m_stem_vao);
 
-        // Renders primitives from array data
-        glDrawArrays(this->m_drawing_mode, 0, this->m_vertices_count);
+        glm::mat4 stem_world = this->m_stem_transform.transform();
+        glUniform3f(this->m_model_color_location, 0.8f, 0.0f, 0.0f);
+        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(stem_world));
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-        // Unbind the vertex array object.
+        // Draw the rotors.
+        glBindVertexArray(this->m_rotor_vao);
+        glm::mat4 rotor_0_world = this->m_rotor_0_transform.transform().with_parent(this->m_rotor_transform);
+        glm::mat4 rotor_1_world = this->m_rotor_1_transform.transform().with_parent(this->m_rotor_transform);
+
+        glUniform3f(this->m_model_color_location, 0.8f, 0.8f, 0.0f);
+        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(rotor_0_world));
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(rotor_1_world));
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
         glBindVertexArray(0);
     }
 
@@ -150,17 +131,6 @@ public:
     {
         if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, GL_TRUE);
-        }
-        // Switch vertex buffer data based on key presses to toggle between triangle and house shapes
-        if (key == GLFW_KEY_1 && action == GLFW_PRESS) {
-            this->m_active_vao = this->m_triangle_vao;
-            this->m_drawing_mode = GL_TRIANGLES;
-            this->m_vertices_count = 3;
-        }
-        if (key == GLFW_KEY_2 && action == GLFW_PRESS) {
-            this->m_active_vao = this->m_house_vao;
-            this->m_drawing_mode = GL_LINE_STRIP;
-            this->m_vertices_count = 9;
         }
     }
 
@@ -170,11 +140,15 @@ public:
     }
 
 private:
-    GLuint m_triangle_vao; // Vertex Array Object for the triangle
-    GLuint m_house_vao; // Vertex Array Object for the house
-    GLuint m_program_id; // OpenGL ID for the shader program
+    GLuint m_stem_vao; // Vertex Array Object of the stem object.
+    GLuint m_rotor_vao; // Vertex Array Object of the rotor object.
 
-    GLuint m_active_vao; // Selected Vertex Array Object
-    GLenum m_drawing_mode; // Drawing mode of the selected Vertex Array Object
-    int m_vertices_count; // Number of vertices in the selected Vertex Array Object
+    GLuint m_program_id; // Shader id.
+    GLuint m_model_color_location; // Uniform location of the model color.
+    GLuint m_model_matrix_location; // Uniform location of the model matrix.
+
+    Transform m_stem_transform;
+    Transform m_rotor_0_transform;
+    Transform m_rotor_1_transform;
+    Transform m_rotor_transform;
 };
