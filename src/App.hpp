@@ -16,6 +16,8 @@
 // ImGUI
 #include <imgui.h>
 
+#include <cmath>
+
 #include "Image.hpp"
 #include "ObjectLoader.hpp"
 #include "Resources.hpp"
@@ -61,9 +63,6 @@ public:
             -0.2f, -0.6f, 0.0f, // bottom-left
             0.2f, -0.6f, 0.0f, // bottom-right
             0.0f, 0.0f, 0.0f, // middle
-            0.0f, 0.0f, 0.0f, // middle
-            -0.2f, 0.6f, 0.0f, // top-right
-            0.2f, 0.6f, 0.0f, // top-left
         };
 
         GLuint vertex_buffer;
@@ -76,10 +75,6 @@ public:
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
         glBindVertexArray(0);
-
-        this->m_rotor_0_transform.with_rotation_euler({ 0.0f, 0.0f, 0.0f });
-        this->m_rotor_1_transform.with_rotation_euler({ 0.0f, 0.0f, glm::half_pi<float>() });
-        this->m_rotor_transform.with_translation({ 0.0f, 0.2f, 0.0f });
     }
 
     void init(GLFWwindow*)
@@ -94,10 +89,20 @@ public:
 
     void draw(GLFWwindow*, float delta_time)
     {
+        // The rotors complete one rotation every four seconds.
+        // Assuming a constant angular rotation speed, we can compute the rotation angle by scaling
+        // it to one second and multiplying the number of seconds that have passed.
         constexpr static float ROTATIONS_PER_SEC = 0.25f;
-        const glm::quat rotation_quat { glm::vec3 { 0.0f, 0.0f, glm::tau<float>() * ROTATIONS_PER_SEC * delta_time } };
-        const auto rotation = rotation_quat * this->m_rotor_transform.rotation();
-        this->m_rotor_transform.with_rotation(rotation);
+        constexpr static float RADIANS_PER_SEC = glm::tau<float>() * ROTATIONS_PER_SEC;
+        const auto rotation_angle = RADIANS_PER_SEC * delta_time;
+        this->m_rotor_rotation = std::fmod(this->m_rotor_rotation + rotation_angle, glm::tau<float>());
+
+        // We have four rotors, each with a different rotation angle.
+        // The angle of the rotor i is: (m_rotor_rotation + i * pi/2) % 2pi
+        const auto rotor_0_angle = this->m_rotor_rotation;
+        const auto rotor_1_angle = std::fmod(rotor_0_angle + glm::half_pi<float>(), glm::tau<float>());
+        const auto rotor_2_angle = std::fmod(rotor_1_angle + glm::half_pi<float>(), glm::tau<float>());
+        const auto rotor_3_angle = std::fmod(rotor_2_angle + glm::half_pi<float>(), glm::tau<float>());
 
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0.0f, 0.0f, 0.6f, 1.0f);
@@ -107,22 +112,40 @@ public:
         // Draw the stem
         glBindVertexArray(this->m_stem_vao);
 
-        glm::mat4 stem_world = this->m_stem_transform.transform();
+        // The stem is already positioned correctly in the global coordinate system.
+        // We send the identity matrix so that we don't modify its position.
+        glm::mat4 trans_matrix = glm::identity<glm::mat4>();
         glUniform3f(this->m_model_color_location, 0.8f, 0.0f, 0.0f);
-        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(stem_world));
+        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(trans_matrix));
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-        // Draw the rotors.
+        // Draw the 4 rotors.
         glBindVertexArray(this->m_rotor_vao);
-        glm::mat4 rotor_0_world = this->m_rotor_0_transform.transform().with_parent(this->m_rotor_transform);
-        glm::mat4 rotor_1_world = this->m_rotor_1_transform.transform().with_parent(this->m_rotor_transform);
-
         glUniform3f(this->m_model_color_location, 0.8f, 0.8f, 0.0f);
-        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(rotor_0_world));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(rotor_1_world));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        // Rotor 0
+        trans_matrix = glm::translate(glm::identity<glm::mat4>(), glm::vec3{ 0.0f, 0.2f, 0.0f });
+        trans_matrix = glm::rotate(trans_matrix, rotor_0_angle, glm::vec3{ 0.0f, 0.0f, 1.0f });
+        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(trans_matrix));
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // Rotor 1
+        trans_matrix = glm::translate(glm::identity<glm::mat4>(), glm::vec3{ 0.0f, 0.2f, 0.0f });
+        trans_matrix = glm::rotate(trans_matrix, rotor_1_angle, glm::vec3{ 0.0f, 0.0f, 1.0f });
+        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(trans_matrix));
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // Rotor 2
+        trans_matrix = glm::translate(glm::identity<glm::mat4>(), glm::vec3{ 0.0f, 0.2f, 0.0f });
+        trans_matrix = glm::rotate(trans_matrix, rotor_2_angle, glm::vec3{ 0.0f, 0.0f, 1.0f });
+        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(trans_matrix));
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // Rotor 3
+        trans_matrix = glm::translate(glm::identity<glm::mat4>(), glm::vec3{ 0.0f, 0.2f, 0.0f });
+        trans_matrix = glm::rotate(trans_matrix, rotor_3_angle, glm::vec3{ 0.0f, 0.0f, 1.0f });
+        glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(trans_matrix));
+        glDrawArrays(GL_TRIANGLES, 0, 3);
 
         glBindVertexArray(0);
     }
@@ -147,8 +170,5 @@ private:
     GLuint m_model_color_location; // Uniform location of the model color.
     GLuint m_model_matrix_location; // Uniform location of the model matrix.
 
-    Transform m_stem_transform;
-    Transform m_rotor_0_transform;
-    Transform m_rotor_1_transform;
-    Transform m_rotor_transform;
+    float m_rotor_rotation;
 };
