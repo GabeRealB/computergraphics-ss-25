@@ -19,7 +19,6 @@ public:
         : m_matrix { glm::identity<glm::mat4>() }
     {
     }
-    TransformChain(Transform& transform) noexcept;
     TransformChain(const Transform& transform) noexcept;
     TransformChain(TransformChain&&) noexcept = default;
     TransformChain(const TransformChain&) noexcept = default;
@@ -28,7 +27,6 @@ public:
     TransformChain& operator=(TransformChain&&) noexcept = default;
     TransformChain& operator=(const TransformChain&) noexcept = default;
 
-    TransformChain& with_parent(Transform& parent) noexcept;
     TransformChain& with_parent(const Transform& parent) noexcept;
 
     operator glm::mat4() const noexcept { return this->m_matrix; }
@@ -43,9 +41,6 @@ public:
         : m_translation { 0.0f }
         , m_scale { 1.0f }
         , m_rotation { glm::identity<glm::quat>() }
-        , m_post_transform { std::nullopt }
-        , m_global_cache { std::nullopt }
-        , m_local_cache { std::nullopt }
     {
     }
 
@@ -66,8 +61,6 @@ public:
     Transform& with_translation(glm::vec3 translation) noexcept
     {
         this->m_translation = translation;
-        this->m_global_cache = std::nullopt;
-        this->m_local_cache = std::nullopt;
         return *this;
     }
 
@@ -81,8 +74,6 @@ public:
     Transform& with_scale(float scale) noexcept
     {
         this->m_scale = scale;
-        this->m_global_cache = std::nullopt;
-        this->m_local_cache = std::nullopt;
         return *this;
     }
 
@@ -102,8 +93,6 @@ public:
     Transform& with_rotation_euler(glm::vec3 rotation) noexcept
     {
         this->m_rotation = glm::quat { rotation };
-        this->m_global_cache = std::nullopt;
-        this->m_local_cache = std::nullopt;
         return *this;
     }
 
@@ -111,79 +100,7 @@ public:
     Transform& with_rotation(glm::quat rotation) noexcept
     {
         this->m_rotation = rotation;
-        this->m_global_cache = std::nullopt;
-        this->m_local_cache = std::nullopt;
         return *this;
-    }
-
-    /// Returns the optional post-transform matrix.
-    std::optional<glm::mat4> post_transform_matrix() const noexcept
-    {
-        return this->m_post_transform;
-    }
-
-    /// Sets the post transform matrix.
-    Transform& with_post_transform_matrix(std::optional<glm::mat4> matrix) noexcept
-    {
-        this->m_post_transform = matrix;
-        this->m_local_cache = std::nullopt;
-        return *this;
-    }
-
-    /// Returns the global transformation matrix.
-    glm::mat4 global_matrix() const noexcept
-    {
-        if (this->m_global_cache.has_value()) {
-            return *this->m_global_cache;
-        } else {
-            return this->compute_global_matrix();
-        }
-    }
-
-    /// Returns the global transformation matrix.
-    ///
-    /// May cache the matrix for faster lookup.
-    glm::mat4 global_matrix() noexcept
-    {
-        if (this->m_global_cache.has_value()) {
-            return *this->m_global_cache;
-        } else {
-            auto matrix = this->compute_global_matrix();
-            this->m_global_cache = matrix;
-            return matrix;
-        }
-    }
-
-    /// Returns the local transformation matrix.
-    glm::mat4 local_matrix() const noexcept
-    {
-        if (this->m_local_cache.has_value()) {
-            return *this->m_local_cache;
-        } else {
-            auto matrix = this->global_matrix();
-            if (this->m_post_transform.has_value()) {
-                return matrix * *this->m_post_transform;
-            } else {
-                return matrix;
-            }
-        }
-    }
-
-    /// Returns the local transformation matrix.
-    ///
-    /// May cache the matrix for faster lookup.
-    glm::mat4 local_matrix() noexcept
-    {
-        if (this->m_local_cache.has_value()) {
-            return *this->m_local_cache;
-        } else {
-            auto matrix = this->global_matrix();
-            if (this->m_post_transform.has_value()) {
-                matrix *= *this->m_post_transform;
-            }
-            this->m_local_cache = matrix;
-            return matrix;
-        }
     }
 
     /// Starts a transform chain.
@@ -192,14 +109,8 @@ public:
         return TransformChain { *this };
     }
 
-    /// Starts a transform chain.
-    TransformChain transform() noexcept
-    {
-        return TransformChain { *this };
-    }
-
-private:
-    glm::mat4 compute_global_matrix() const noexcept
+    /// Returns the transformation matrix.
+    operator glm::mat4() const noexcept
     {
         glm::mat4 matrix = glm::translate(glm::identity<glm::mat4>(), this->m_translation);
         matrix *= glm::mat4_cast(this->m_rotation);
@@ -207,33 +118,19 @@ private:
         return matrix;
     }
 
+private:
     glm::vec3 m_translation;
     float m_scale;
     glm::quat m_rotation;
-    std::optional<glm::mat4> m_post_transform;
-
-    std::optional<glm::mat4> m_global_cache;
-    std::optional<glm::mat4> m_local_cache;
 };
-
-inline TransformChain::TransformChain(Transform& transform) noexcept
-    : m_matrix { transform.local_matrix() }
-{
-}
 
 inline TransformChain::TransformChain(const Transform& transform) noexcept
-    : m_matrix { transform.local_matrix() }
+    : m_matrix { static_cast<glm::mat4>(transform) }
 {
 }
-
-inline TransformChain& TransformChain::with_parent(Transform& parent) noexcept
-{
-    this->m_matrix = parent.global_matrix() * this->m_matrix;
-    return *this;
-};
 
 inline TransformChain& TransformChain::with_parent(const Transform& parent) noexcept
 {
-    this->m_matrix = parent.global_matrix() * this->m_matrix;
+    this->m_matrix = static_cast<glm::mat4>(parent) * this->m_matrix;
     return *this;
 };
