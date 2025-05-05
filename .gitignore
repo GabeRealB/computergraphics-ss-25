@@ -85,6 +85,9 @@ cmake-build-*/
 build/
 build-*/
 
+## Dear ImGui artifacts
+imgui.ini
+
 # Mongo Explorer plugin
 .idea/**/mongoSettings.xml
 
@@ -150,3 +153,6 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Include the resources folder
+!/resources/**
