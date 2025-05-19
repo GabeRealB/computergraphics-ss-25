@@ -1,7 +1,7 @@
 // Fragment Shader
 #version 330 core
 
-in vec4 fragmentColor; // Input color from the vertex shader
+in vec4 fragmentColor;
 out vec4 color;
 
 void main() {
