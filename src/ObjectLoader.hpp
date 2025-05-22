@@ -19,13 +19,6 @@ struct Triangle {
     glm::vec3 v1;
     glm::vec3 v2;
     glm::vec3 v3;
-
-    Triangle()
-        : v1(0.0f)
-        , v2(0.0f)
-        , v3(0.0f)
-    {
-    }
 };
 
 // Function to load an OBJ file and extract triangles
