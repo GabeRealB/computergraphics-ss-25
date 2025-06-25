@@ -13,6 +13,7 @@
 #include <glad/gl.h>
 // GLFW (include after glad)
 #include <GLFW/glfw3.h>
+#include <limits>
 // GLM
 #ifdef _MSVC_VER
 #pragma warning(push, 3)
@@ -46,7 +47,7 @@ public:
         glBindVertexArray(this->m_model_vao);
 
         std::vector<Triangle> triangles {};
-        if (!load_obj(to_resource_path("teapot.obj"), triangles)) {
+        if (!load_obj(to_resource_path("cow.obj"), triangles)) {
             std::exit(EXIT_FAILURE);
         }
 
@@ -59,17 +60,50 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
+        glm::vec3 min { std::numeric_limits<float>::max() };
+        glm::vec3 max { std::numeric_limits<float>::lowest() };
         glm::vec3 center {};
         for (const auto& triangle : triangles) {
+            min = glm::min(min, triangle.v1);
+            min = glm::min(min, triangle.v2);
+            min = glm::min(min, triangle.v3);
+
+            max = glm::max(max, triangle.v1);
+            max = glm::max(max, triangle.v2);
+            max = glm::max(max, triangle.v3);
+
             center += triangle.v1;
             center += triangle.v2;
             center += triangle.v3;
         }
         center /= triangles.size() * 3.0f;
+        this->m_model_center = center;
+        this->m_model_size = max - min;
         this->m_model_transform.with_translation(-center);
         this->m_model_vertex_count = static_cast<GLsizei>(triangles.size() * 3);
 
         glBindVertexArray(0);
+    }
+
+    void load_texture()
+    {
+        Image texture { to_resource_path("grid.bmp") };
+
+        // Generate one texture for the dice image.
+        glGenTextures(1, &this->m_texture);
+        // Bind the newly created texture to the GL_TEXTURE_2D target.
+        glBindTexture(GL_TEXTURE_2D, this->m_texture);
+        // Upload the image data to the texture.
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texture.width(), texture.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, texture.data());
+        // Set the texture options.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        // Unbind the texture.
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     void init(GLFWwindow* window)
@@ -79,10 +113,15 @@ public:
         this->m_aspect = static_cast<float>(width) / static_cast<float>(height);
 
         this->load_model();
+        this->load_texture();
 
         this->m_program_id = Shader::loadShaders(to_resource_path("vertex0.glsl"), to_resource_path("fragment0.glsl"));
+        this->m_parametrisation_location = glGetUniformLocation(this->m_program_id, "parametrisation");
+        this->m_model_center_location = glGetUniformLocation(this->m_program_id, "model_center");
+        this->m_model_size_location = glGetUniformLocation(this->m_program_id, "model_size");
         this->m_view_projection_location = glGetUniformLocation(this->m_program_id, "view_projection_matrix");
         this->m_model_matrix_location = glGetUniformLocation(this->m_program_id, "model_matrix");
+        this->m_texture_location = glGetUniformLocation(this->m_program_id, "textureSampler");
     }
 
     void update_camera_pos(GLFWwindow* window, float delta_time)
@@ -158,8 +197,17 @@ public:
 
         const auto view_proj_mat = this->get_view_proj_mat();
         const auto model_mat = static_cast<glm::mat4>(this->m_model_transform);
+        glUniform1ui(this->m_parametrisation_location, this->m_cylindrical_parametrisation ? 0 : 1);
+        glUniform3fv(this->m_model_center_location, 1, glm::value_ptr(this->m_model_center));
+        glUniform3fv(this->m_model_size_location, 1, glm::value_ptr(this->m_model_size));
         glUniformMatrix4fv(this->m_view_projection_location, 1, GL_FALSE, glm::value_ptr(view_proj_mat));
         glUniformMatrix4fv(this->m_model_matrix_location, 1, GL_FALSE, glm::value_ptr(model_mat));
+
+        // Set the location of the texture.
+        glUniform1i(this->m_texture_location, 0);
+        // Bind the texture to the first slot.
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, this->m_texture);
 
         // Draw the model.
         glBindVertexArray(this->m_model_vao);
@@ -172,6 +220,10 @@ public:
     {
         if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, GL_TRUE);
+        } else if (key == GLFW_KEY_1 && action == GLFW_PRESS) {
+            this->m_cylindrical_parametrisation = true;
+        } else if (key == GLFW_KEY_2 && action == GLFW_PRESS) {
+            this->m_cylindrical_parametrisation = false;
         }
     }
 
@@ -183,13 +235,22 @@ public:
 
 private:
     float m_aspect;
+    bool m_cylindrical_parametrisation { true };
     glm::vec3 m_camera_polar { 2.0f, 0.0f, 0.0f };
 
     GLuint m_model_vao;
+    glm::vec3 m_model_size;
+    glm::vec3 m_model_center;
     Transform m_model_transform;
     GLsizei m_model_vertex_count;
 
+    GLuint m_texture;
+
     GLuint m_program_id;
+    GLuint m_parametrisation_location;
+    GLuint m_model_center_location;
+    GLuint m_model_size_location;
     GLuint m_view_projection_location;
     GLuint m_model_matrix_location;
+    GLuint m_texture_location;
 };

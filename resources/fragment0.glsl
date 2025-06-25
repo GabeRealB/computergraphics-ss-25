@@ -1,9 +1,11 @@
 // Fragment Shader
 #version 330 core
 
-in vec4 fragmentColor;
+uniform sampler2D textureSampler;
+
+in vec2 uvPos;
 out vec4 color;
 
 void main() {
-    color = fragmentColor;
+    color = texture(textureSampler, uvPos);
 }
